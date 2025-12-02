@@ -1,1 +1,5 @@
-Test
+Dependencies
+Python 3.12.3
+pip install Flask
+pip install flask_sqlaclchemy
+pip install flask_restful
