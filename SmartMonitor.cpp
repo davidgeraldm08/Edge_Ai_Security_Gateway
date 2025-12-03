@@ -1,94 +1,152 @@
 #include "SmartMonitor.h"
 
-// Constructor
-SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
-                           int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut)
-  : mq2Pin(mq2Pin), buzzerPin(buzzerPin), dhtPin(dhtPin), dhtType(dhtType),
-    S0(tcsS0), S1(tcsS1), S2(tcsS2), S3(tcsS3), OUT_PIN(tcsOut), dht(dhtPin, dhtType)
-{
+// ------------------- MQ2 -------------------
+SmokeSensor::SmokeSensor(int aPin, int bPin, bool isConnected, int thresh) {
+  analogPin = aPin;
+  buzzerPin = bPin;
+  connected = isConnected;
+  threshold = thresh;
 }
 
-// Initialization
-void SmartMonitor::begin() {
-  dht.begin();
-  pinMode(mq2Pin, INPUT);
+void SmokeSensor::begin() {
+  if (!connected) return;
+  pinMode(analogPin, INPUT);
   pinMode(buzzerPin, OUTPUT);
+  digitalWrite(buzzerPin, LOW);
+}
 
-  pinMode(S0, OUTPUT);
-  pinMode(S1, OUTPUT);
-  pinMode(S2, OUTPUT);
-  pinMode(S3, OUTPUT);
+bool SmokeSensor::detectSmoke() {
+  if (!connected) return false;
+
+  int sensorValue = analogRead(analogPin);
+  bool detected = sensorValue > threshold;
+  digitalWrite(buzzerPin, detected ? HIGH : LOW);
+  return detected;
+}
+
+// ------------------- Temperature -------------------
+TemperatureSensor::TemperatureSensor(bool isConnected) {
+  connected = isConnected;
+  temperatureOffset = 0.0;
+  temperature = 0.0;
+}
+
+void TemperatureSensor::begin() {
+  if (!connected) return;
+}
+
+void TemperatureSensor::setOffset(float offset) {
+  temperatureOffset = offset;
+}
+
+void TemperatureSensor::readTemperature() {
+  if (!connected) {
+    temperature = NAN;
+    return;
+  }
+
+  // Placeholder: replace with actual sensor reading
+  temperature = 25.0 - temperatureOffset;
+}
+
+// ------------------- TCS3200 -------------------
+ColorSensor::ColorSensor(int s0, int s1, int s2, int s3, int outPin, int ledPin) {
+  S0 = s0; S1 = s1; S2 = s2; S3 = s3;
+  OUT_PIN = outPin;
+  LED_PIN = ledPin;
+  red = green = blue = 0;
+}
+
+void ColorSensor::begin() {
+  pinMode(S0, OUTPUT); pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT); pinMode(S3, OUTPUT);
   pinMode(OUT_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
 
-  // TCS3200 scaling 20%
-  digitalWrite(S0, HIGH);
-  digitalWrite(S1, LOW);
-
-  Serial.println("SmartMonitor Initialized");
+  digitalWrite(S0, HIGH); digitalWrite(S1, LOW); // frequency scaling
+  digitalWrite(LED_PIN, LOW); // LED OFF
 }
 
-// -------------------------
-// Read Sensors
-// -------------------------
+void ColorSensor::ledOn() { digitalWrite(LED_PIN, HIGH); }
+void ColorSensor::ledOff() { digitalWrite(LED_PIN, LOW); }
 
-void SmartMonitor::readTemperature() {
-  temperature = dht.readTemperature();
-}
-
-void SmartMonitor::readHumidity() {
-  humidity = dht.readHumidity();
-}
-
-void SmartMonitor::readSmoke() {
-  smokeValue = analogRead(mq2Pin);
-  smokeDetected = (smokeValue > smokeThreshold);
-
-  // Activate buzzer if smoke detected
-  digitalWrite(buzzerPin, smokeDetected ? HIGH : LOW);
-}
-
-// Private function to read TCS3200 frequency
-int SmartMonitor::readColorFrequency(int s2State, int s3State) {
+int ColorSensor::readColorFrequency(int s2State, int s3State) {
   digitalWrite(S2, s2State);
   digitalWrite(S3, s3State);
   delay(20);
   return pulseIn(OUT_PIN, LOW);
 }
 
-void SmartMonitor::readColor() {
+void ColorSensor::readColor() {
+  ledOff();
   red = readColorFrequency(LOW, LOW);
   green = readColorFrequency(HIGH, HIGH);
   blue = readColorFrequency(LOW, HIGH);
 }
 
-// Determine dominant color or natural light
-String SmartMonitor::detectColor() {
-  int minColorThreshold = 100; // adjust based on ambient light
+// ------------------- Improved Color Detection -------------------
+String ColorSensor::detectColor() {
+  int minThreshold = 5000;
+  int similarityThreshold = 500;
 
-  if (red < minColorThreshold && green < minColorThreshold && blue < minColorThreshold) {
+  if (red > minThreshold && green > minThreshold && blue > minThreshold)
     return "Natural Light";
-  }
 
-  if (red > green && red > blue) return "Red Light";
-  if (green > red && green > blue) return "Green Light";
-  if (blue > red && blue > green) return "Blue Light";
+  // Yellow: red + green strong and similar, blue weaker
+  if (abs(red - green) < similarityThreshold && red < blue && green < blue)
+    return "Yellow Light";
+
+  if (red < green && red < blue) return "Red Light";
+  if (green < red && green < blue) return "Green Light";
+  if (blue < red && blue < green) return "Blue Light";
 
   return "Mixed Light";
 }
 
-// -------------------------
-// Print Readings
-// -------------------------
+// ------------------- SmartMonitor -------------------
+SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, bool mq2Connected,
+                           bool tempConnected,
+                           int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut, int tcsLed)
+  : smokeSensor(mq2Pin, buzzerPin, mq2Connected),
+    tempSensor(tempConnected),
+    colorSensor(tcsS0, tcsS1, tcsS2, tcsS3, tcsOut, tcsLed) {}
+
+void SmartMonitor::begin() {
+  smokeSensor.begin();
+  tempSensor.begin();
+  colorSensor.begin();
+  Serial.println("SmartMonitor Initialized");
+}
+
+void SmartMonitor::readSensors() {
+  tempSensor.readTemperature();
+  smokeSensor.detectSmoke();
+  colorSensor.readColor();
+}
+
 void SmartMonitor::printReadings() {
   Serial.println("=====================================");
-  Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" °C");
-  Serial.print("Humidity: "); Serial.print(humidity); Serial.println(" %");
-  Serial.print("Smoke Value: "); Serial.println(smokeValue);
-  Serial.println(smokeDetected ? "⚠️  SMOKE DETECTED!" : "No Smoke Detected");
 
-  Serial.print("Color Sensor: "); Serial.println(detectColor());
-  Serial.print("R: "); Serial.print(red);
-  Serial.print(" | G: "); Serial.print(green);
-  Serial.print(" | B: "); Serial.println(blue);
+  if (tempSensor.isConnected()) {
+    Serial.print("Temperature: "); Serial.print(tempSensor.getTemperature()); Serial.println(" °C");
+  } else {
+    Serial.println("Temperature Sensor not connected!");
+  }
+
+  if (smokeSensor.isConnected()) {
+    bool smoke = smokeSensor.detectSmoke();
+    Serial.println(smoke ? "⚠️  SMOKE DETECTED!" : "No Smoke Detected");
+  } else {
+    Serial.println("MQ2 Smoke Sensor not connected!");
+  }
+
+  Serial.print("Color Sensor: "); Serial.println(colorSensor.detectColor());
+  Serial.print("R: "); Serial.print(colorSensor.getRed());
+  Serial.print(" | G: "); Serial.print(colorSensor.getGreen());
+  Serial.print(" | B: "); Serial.println(colorSensor.getBlue());
   Serial.println("=====================================\n");
+}
+
+void SmartMonitor::setTemperatureOffset(float offset) {
+  tempSensor.setOffset(offset);
 }

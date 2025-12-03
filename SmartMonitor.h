@@ -2,61 +2,77 @@
 #define SMARTMONITOR_H
 
 #include <Arduino.h>
-#include <DHT.h>
 
-class SmartMonitor {
-  public:
-    // Constructor
-    SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
-                 int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut);
+// ---------------- MQ2 Smoke Sensor ----------------
+class SmokeSensor {
+private:
+    int analogPin;
+    int buzzerPin;
+    int threshold;
+    bool connected;
 
-    // Initialization
+public:
+    SmokeSensor(int aPin, int bPin, bool isConnected = true, int thresh = 700);
     void begin();
+    bool detectSmoke();
+    void setThreshold(int t);          // Adjust sensitivity
+    bool isConnected() const { return connected; }
+};
 
-    // Sensor readings
+// ---------------- Temperature Sensor ----------------
+class TemperatureSensor {
+private:
+    float temperatureOffset;
+    float temperature;
+    bool connected;
+
+public:
+    TemperatureSensor(bool isConnected = true);
+    void begin();
+    void setOffset(float offset);
     void readTemperature();
-    void readHumidity();
-    void readSmoke();
-    void readColor();
-
-    // Print readings to Serial
-    void printReadings();
-
-    // Detect dominant color or natural light
-    String detectColor();
-
-    // Accessors
     float getTemperature() const { return temperature; }
-    float getHumidity() const { return humidity; }
-    int getSmokeValue() const { return smokeValue; }
-    bool isSmokeDetected() const { return smokeDetected; }
+    bool isConnected() const { return connected; }
+};
+
+// ---------------- TCS3200 Color Sensor ----------------
+class ColorSensor {
+private:
+    int S0, S1, S2, S3, OUT_PIN, LED_PIN;
+    int red, green, blue;
+    int readColorFrequency(int s2State, int s3State);
+
+public:
+    ColorSensor(int s0, int s1, int s2, int s3, int outPin, int ledPin);
+    void begin();
+    void ledOn();
+    void ledOff();
+    void readColor();
+    String detectColor();
     int getRed() const { return red; }
     int getGreen() const { return green; }
     int getBlue() const { return blue; }
+};
 
-  private:
-    // Pins
-    int mq2Pin;
-    int buzzerPin;
-    int dhtPin;
-    int dhtType;
-    int S0, S1, S2, S3, OUT_PIN;
+// ---------------- SmartMonitor Class ----------------
+class SmartMonitor {
+private:
+    SmokeSensor smokeSensor;
+    TemperatureSensor tempSensor;
+    ColorSensor colorSensor;
 
-    // Sensor objects
-    DHT dht;
+public:
+    SmartMonitor(int mq2Pin, int buzzerPin, bool mq2Connected,
+                 bool tempConnected,
+                 int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut, int tcsLed);
 
-    // Thresholds
-    int smokeThreshold = 1800;
+    void begin();
+    void readSensors();
+    void printReadings();
+    void setTemperatureOffset(float offset);
 
-    // Sensor readings
-    float temperature;
-    float humidity;
-    int smokeValue;
-    bool smokeDetected;
-    int red, green, blue;
-
-    // Private function for TCS3200
-    int readColorFrequency(int s2State, int s3State);
+    // New public wrapper for MQ2 threshold
+    void setSmokeThreshold(int t);
 };
 
 #endif
