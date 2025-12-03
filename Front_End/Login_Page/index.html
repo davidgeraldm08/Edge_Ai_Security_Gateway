@@ -13,7 +13,7 @@
             <div class="v2_81">
                 </div>
             <div class="v2_82">
-                </div>
+                </div>  
             <div class="v2_83">
                 </div>
             <div class="v2_84">
@@ -26,9 +26,11 @@
                 </div>
             <div class="v2_88">
                 </div>
-            <span class="v2_89" role="button">LOG-IN</span>
-            <span class="v2_90" contenteditable="true">EMAIL</span>
-            <span class="v2_91" contenteditable="true">PASSWORD</span>
+            <button class="v2_89" onclick="authenticate()" type="button">Log in</button>
+            <label id="editableLabel" contenteditable = "true" class="v2_90" for="fname">Name:</label>
+            <label oninput="maskText(this)" autocomplete="off" id="editableLabel2" contenteditable="true"  class="v2_91" for="lname">Password:</label>
         </div>
+        <script src="script.js"></script>
     </body>
 </html>
+

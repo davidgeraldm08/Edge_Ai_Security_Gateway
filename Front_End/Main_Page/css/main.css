@@ -143,7 +143,7 @@ body {
 }
 .v2_96 {
   width: 100px;
-  color: rgba(255,255,255,1);
+  color: var(currentmood);
   position: absolute;
   top: 152px;
   left: 451px;
