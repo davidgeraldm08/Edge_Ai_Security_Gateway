@@ -9,6 +9,7 @@ db=SQLAlchemy(app)
 api = Api(app)
 CORS(app)
 
+live_feed_data = "Nigger"
 class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True,nullable=False)
     name = db.Column(db.String(80), unique=True,nullable=False)
@@ -92,9 +93,22 @@ class Data(Resource):
         datas = DataLog.query.all()
         return datas, 201
 
+class LiveData(Resource):  
+    def get(self):
+        global live_feed_data
+        data = live_feed_data
+        return data, 200
+    def post(self):
+        global live_feed_data
+        live_feed_data = request.get_json()
+        return {"status": "ok"}, 200
+
+        
+
 api.add_resource(Users,'/api/users/')
 api.add_resource(User,'/api/user/<string:name>/<string:password>')
 api.add_resource(Data,'/api/data/')
+api.add_resource(LiveData,'/api/live/')
 
 @app.route("/")
 @cross_origin()
