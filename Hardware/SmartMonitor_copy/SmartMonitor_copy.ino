@@ -1,4 +1,6 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 #include "SmartMonitor.h"
 
 // --------------------------
@@ -15,6 +17,9 @@
 #define OUT_PIN 23
 #define LED_PIN 12
 
+const char* ssid = "PLDTHOMEFIBR5GKt6B7";
+const char* password = "PLDTWIFIcfPB8";
+
 SmartMonitor monitor(MQ2_PIN, BUZZER_PIN, MQ2_CONNECTED, TEMP_CONNECTED,
                      S0, S1, S2, S3, OUT_PIN, LED_PIN);
 
@@ -23,6 +28,8 @@ const long updateInterval = 1000; // 1 second
 
 void setup() {
   Serial.begin(115200);
+ 
+
   monitor.begin();
   monitor.setTemperatureOffset(2.0);
 }
