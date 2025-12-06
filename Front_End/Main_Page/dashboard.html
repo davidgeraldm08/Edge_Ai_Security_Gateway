@@ -1,39 +1,40 @@
 <!DOCTYPE html>
-	<html>
-		<head>
-			<link href="https://fonts.googleapis.com/css?family=Poppins&display=swap" rel="stylesheet" /><link href="./css/main.css" rel="stylesheet" />
-			<title>Document</title>
-		</head>
-		<body>
-			<div class="v2_74">
-				<div class="v2_76">
-				</div>
-				<div class="v2_77">
-				</div>
-				<div class="v2_78">
-				</div>
-				<div class="v2_79">
-				</div>
-				<div class="v2_92">
-				</div>
-				<div class="v2_93">
-				</div>
-				<div class="v2_94">
-				</div>
-				
-				<label id="myLabel" class="v2_95"></label>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css?family=Poppins&display=swap" rel="stylesheet" />
+  <link href="./css/main.css" rel="stylesheet" />
+  <title>Carousel Version</title>
+</head>
+<body>
 
-				<label id="myLabel2" class="v2_96"></label>
+<div class="carousel-container">
+  <div class="carousel-track" id="track">
 
-				<label id="myLabel3" class="v2_97"></label>
+    <!-- SLIDE 1: TEMPERATURE -->
+    <div class="slide" id="slide1">
+      <label id="myLabel">Temperature:</label>
+    </div>
+
+    <!-- SLIDE 2: COLOR -->
+    <div class="slide" id="slide2">
+      <label id="myLabel2">Current Mood:</label>
+    </div>
+
+    <!-- SLIDE 3: SMOKE -->
+    <div class="slide" id="slide3">
+      <label id="myLabel3">Smoke/Gas Level:</label>
+    </div>
+
+  </div>
+
+  <button id="prevBtn" class="nav-btn">❮</button>
+  <button id="nextBtn" class="nav-btn">❯</button>
+</div>
+
+<button onclick="datafetch()" class="refresh-btn">Refresh</button>
+
+<script src="script2.js"></script>
 
 
-				<button onclick ="datafetch()" >Refresh</button>
-
-			</div>
-
-			<script src="script2.js"></script>
-		</body>
-	</html>
-
-	
+</body>
+</html>
