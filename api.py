@@ -9,7 +9,7 @@ db=SQLAlchemy(app)
 api = Api(app)
 CORS(app)
 
-live_feed_data = "Nigger"
+live_feed_data = {}
 class UserModel(db.Model):
     id = db.Column(db.Integer, primary_key=True,nullable=False)
     name = db.Column(db.String(80), unique=True,nullable=False)
