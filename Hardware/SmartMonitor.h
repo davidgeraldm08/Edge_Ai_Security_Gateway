@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <DHT.h>
 
+
 class SmartMonitor {
   public:
     // Constructor
@@ -15,7 +16,6 @@ class SmartMonitor {
 
     // Sensor readings
     void readTemperature();
-    void readHumidity();
     void readSmoke();
     void readColor();
 
@@ -27,7 +27,6 @@ class SmartMonitor {
 
     // Accessors
     float getTemperature() const { return temperature; }
-    float getHumidity() const { return humidity; }
     int getSmokeValue() const { return smokeValue; }
     bool isSmokeDetected() const { return smokeDetected; }
     int getRed() const { return red; }
@@ -45,12 +44,8 @@ class SmartMonitor {
     // Sensor objects
     DHT dht;
 
-    // Thresholds
-    int smokeThreshold = 1800;
-
     // Sensor readings
     float temperature;
-    float humidity;
     int smokeValue;
     bool smokeDetected;
     String color;

@@ -3,12 +3,16 @@
 #include <WiFi.h>
 #include "time.h"
 #include <ArduinoJson.h>
+#include <DHT.h>
 
 // Constructor
 
 const char* ntpServer = "pool.ntp.org";
 const long gmtOffset_sec = 8 * 3600;   // GMT+8 (Philippines)
 const int daylightOffset_sec = 0;
+const int smokeThreshold = 1600;
+DHT dht(33, DHT22);
+
 
 SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
                            int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut)
@@ -19,12 +23,13 @@ SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
 
 // Initialization
 void SmartMonitor::begin() {
- 
+  
   dht.begin();
   
 
   pinMode(mq2Pin, INPUT);
   pinMode(buzzerPin, OUTPUT);
+
 
   pinMode(S0, OUTPUT);
   pinMode(S1, OUTPUT);
@@ -49,10 +54,7 @@ void SmartMonitor::begin() {
 
 void SmartMonitor::readTemperature() {
   temperature = dht.readTemperature();
-}
-
-void SmartMonitor::readHumidity() {
-  humidity = dht.readHumidity();
+  delay(2000);
 }
 
 void SmartMonitor::readSmoke() {
@@ -61,13 +63,14 @@ void SmartMonitor::readSmoke() {
 
   // Activate buzzer if smoke detected
   digitalWrite(buzzerPin, smokeDetected ? HIGH : LOW);
+  delay(2000);
 }
 
 // Private function to read TCS3200 frequency
 int SmartMonitor::readColorFrequency(int s2State, int s3State) {
   digitalWrite(S2, s2State);
   digitalWrite(S3, s3State);
-  delay(20);
+  delay(2000);
   return pulseIn(OUT_PIN, LOW);
 }
 
@@ -101,7 +104,6 @@ void SmartMonitor::printReadings() {
  
   Serial.println("=====================================");
   Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" °C");
-  Serial.print("Humidity: "); Serial.print(humidity); Serial.println(" %");
   Serial.print("Smoke Value: "); Serial.println(smokeValue);
   Serial.println(smokeDetected ? "⚠️  SMOKE DETECTED!" : "No Smoke Detected");
 
@@ -123,27 +125,23 @@ void SmartMonitor::printReadings() {
                       timeinfo.tm_hour + ":" +
                       timeinfo.tm_min + ":" +
                       timeinfo.tm_sec;
-    doc["time"] = dateTime;
+    doc["time_log"] = dateTime;
   }
   HTTPClient http;
 
-    String url = "http://192.168.1.119:5000/api/live/"; 
+    String url = "http://172.20.10.6:5000/api/live/"; 
     http.begin(url);
 
     // Important JSON header
     http.addHeader("Content-Type", "application/json");
-    
-    doc["red"] = String(red);
-    doc["green"] = String(green);
-    doc["blue"] = String(blue);
 
+    doc["temp_log"] = temperature;
+    doc["gas_log"] = smokeDetected;
+    doc["color_log"] = String(red)+","+String(green)+","+String(blue);
     String json;
     serializeJson(doc, json);
 
-    // Your JSON body (must be a valid string)
-    String jsonData = "{\"red\":\""+String(red)+"\",\"green\":"+String(green)+",\"blue\":"+String(blue)+"}";
-
-    // Send POST
+    
     int httpCode = http.POST(json);
 
     Serial.print("HTTP Code: ");
@@ -157,8 +155,59 @@ void SmartMonitor::printReadings() {
       Serial.print("POST Error: ");
       Serial.println(httpCode);
     }
-  delay(1000);
+ 
+    Serial.println(millis());
 
     http.end();
   }
+}
+
+void SmartMonitor::saveData() {
+  if (WiFi.status() == WL_CONNECTED){
+    DynamicJsonDocument doc(200);  
+    
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+      String dateTime = String();
+      dateTime = dateTime + (timeinfo.tm_year + 1900) + "-" +
+                        (timeinfo.tm_mon + 1) + "-" +
+                        timeinfo.tm_mday + " " +
+                        timeinfo.tm_hour + ":" +
+                        timeinfo.tm_min + ":" +
+                        timeinfo.tm_sec;
+      doc["time_log"] = dateTime;
+    }  
+
+    HTTPClient http;
+    String url = "http://172.20.10.6:5000/api/data/"; 
+    http.begin(url);
+    doc["temp_log"] = temperature;
+    doc["gas_log"] = smokeDetected;
+    doc["color_log"] = String(red)+","+String(green)+","+String(blue);
+    String json;
+    serializeJson(doc, json);
+    
+    // Important JSON header
+    http.addHeader("Content-Type", "application/json");
+
+    int httpCode = http.POST(json);
+
+      Serial.print("HTTP Code: ");
+      Serial.println(httpCode);
+
+      if (httpCode > 0) {
+        String response = http.getString();
+        Serial.println("Server Response:");
+        Serial.println(response);
+        Serial.println("DATA SAVED");
+      } else {
+        Serial.print("POST Error: ");
+        Serial.println(httpCode);
+      }
+  
+      Serial.println(millis());
+
+      http.end();
+  }
+
 }
