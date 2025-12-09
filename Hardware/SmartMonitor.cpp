@@ -1,8 +1,15 @@
 #include "SmartMonitor.h"
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include "time.h"
+#include <ArduinoJson.h>
 
 // Constructor
+
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 8 * 3600;   // GMT+8 (Philippines)
+const int daylightOffset_sec = 0;
+
 SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
                            int tcsS0, int tcsS1, int tcsS2, int tcsS3, int tcsOut)
   : mq2Pin(mq2Pin), buzzerPin(buzzerPin), dhtPin(dhtPin), dhtType(dhtType),
@@ -12,7 +19,10 @@ SmartMonitor::SmartMonitor(int mq2Pin, int buzzerPin, int dhtPin, int dhtType,
 
 // Initialization
 void SmartMonitor::begin() {
+ 
   dht.begin();
+  
+
   pinMode(mq2Pin, INPUT);
   pinMode(buzzerPin, OUTPUT);
 
@@ -22,9 +32,13 @@ void SmartMonitor::begin() {
   pinMode(S3, OUTPUT);
   pinMode(OUT_PIN, INPUT);
 
+
   // TCS3200 scaling 20%
   digitalWrite(S0, HIGH);
   digitalWrite(S1, HIGH);
+
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  Serial.println("\nTime synced!");
 
   Serial.println("SmartMonitor Initialized");
 }
@@ -84,6 +98,7 @@ String SmartMonitor::detectColor() {
 // Print Readings
 // -------------------------
 void SmartMonitor::printReadings() {
+ 
   Serial.println("=====================================");
   Serial.print("Temperature: "); Serial.print(temperature); Serial.println(" °C");
   Serial.print("Humidity: "); Serial.print(humidity); Serial.println(" %");
@@ -98,19 +113,38 @@ void SmartMonitor::printReadings() {
 
    if (WiFi.status() == WL_CONNECTED) {
 
-    HTTPClient http;
+  DynamicJsonDocument doc(200);  
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    String dateTime = String();
+    dateTime = dateTime + (timeinfo.tm_year + 1900) + "-" +
+                      (timeinfo.tm_mon + 1) + "-" +
+                      timeinfo.tm_mday + " " +
+                      timeinfo.tm_hour + ":" +
+                      timeinfo.tm_min + ":" +
+                      timeinfo.tm_sec;
+    doc["time"] = dateTime;
+  }
+  HTTPClient http;
 
     String url = "http://192.168.1.119:5000/api/live/"; 
     http.begin(url);
 
     // Important JSON header
     http.addHeader("Content-Type", "application/json");
+    
+    doc["red"] = String(red);
+    doc["green"] = String(green);
+    doc["blue"] = String(blue);
+
+    String json;
+    serializeJson(doc, json);
 
     // Your JSON body (must be a valid string)
     String jsonData = "{\"red\":\""+String(red)+"\",\"green\":"+String(green)+",\"blue\":"+String(blue)+"}";
 
     // Send POST
-    int httpCode = http.POST(jsonData);
+    int httpCode = http.POST(json);
 
     Serial.print("HTTP Code: ");
     Serial.println(httpCode);
@@ -123,6 +157,7 @@ void SmartMonitor::printReadings() {
       Serial.print("POST Error: ");
       Serial.println(httpCode);
     }
+  delay(1000);
 
     http.end();
   }
