@@ -64,7 +64,7 @@ async function authenticate(){
     realValue = label2.innerText
     
     try {
-        const response = await fetch(`http://192.168.1.119:5000/api/user/${realemail}/${password}`)
+        const response = await fetch(`http://172.20.10.6:5000/api/user/${realemail}/${password}`)
         const data = await response.json()
         goPage2()
     

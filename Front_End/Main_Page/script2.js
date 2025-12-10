@@ -1,32 +1,49 @@
+document.addEventListener('DOMContentLoaded', () => {
+    setInterval(datafetch, 1000);
+});
 
-let data_temp = "";
-let data_color = "";
-let data_smoke = "";
-
-async function datafetch(value){
+async function datafetch(){
     try {
-        const response = await fetch("http://192.168.1.119:5000/api/live/");
+        const response = await fetch("http://172.20.10.6:5000/api/live/");
         const data = await response.json();
         console.log(data);
 
-        let red = data.red;
-        let green = data.green;
-        let blue = data.blue;
+         let color_array = data.color_log.split(",");
 
+        let red = Number(normalize(color_array[0]));
+        let green = Number(normalize(color_array[1]));
+        let blue = Number(normalize(color_array[2]));
+
+        let rgbValue = `rgb(${red}, ${green}, ${blue})`;
+        console.log(red+" "+green+" "+blue)
         if (red < green && red < blue){
-            console.log("Red")
+            document.getElementById("myLabel2").textContent = `Current Mood: Romantic`;
+             myLabel2.style.backgroundColor = `rgb(255,0,0)`;
+            console.log("currentmood now is: ", 
+    getComputedStyle(document.documentElement).getPropertyValue("--currentmood")
+);
         }else if (green < red && green < blue){
-            console.log("Green")
+            document.getElementById("myLabel2").textContent = `Current Mood: Tranquil`;
+             myLabel2.style.backgroundColor = `rgb(0,255,0)`;
+            console.log("currentmood now is: ", 
+    getComputedStyle(document.documentElement).getPropertyValue("--currentmood")
+);
         }else if (blue < red && blue < green){ 
-            console.log("Blue")
+            document.getElementById("myLabel2").textContent = `Current Mood: Sleepy`;
+             myLabel2.style.backgroundColor = `rgb(0,0,255)`;
+            console.log("currentmood now is: ", 
+    getComputedStyle(document.documentElement).getPropertyValue("--currentmood")
+);
+            }
+
+        if(data.gas_log){
+            document.getElementById("myLabel3").textContent = `SMOKE DETECTED`;
         }
-
-        document.getElementById("myLabel").textContent = `Temperature: ${data_temp}!`;
-        document.getElementById("myLabel2").textContent = `Current Mood: ${data_color}!`;
-        document.getElementById("myLabel3").textContent = `Smoke/Gas Level: ${data_smoke}!`;
-
-        let currentmood = data_color;
-        document.documentElement.style.setProperty("--currentmood", currentmood);
+        else{
+            document.getElementById("myLabel3").textContent = `Safe`;
+        }
+        document.getElementById("myLabel").textContent = `Temperature: ${data.temp_log}!`;
+        
         
     } catch(error) {
         console.log(error);
@@ -38,6 +55,10 @@ async function datafetch(value){
 /* ---------------------------
    CAROUSEL SYSTEM
 ----------------------------*/
+
+function normalize(value, max = 2000) {
+    return Math.min(255, Math.floor((value / max) * 255));
+}
 
 let index = 0;
 
